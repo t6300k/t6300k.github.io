@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>통합 대수막대 시뮬레이터 (모바일 반응형 최적화)</title>
+    <style>
+        body { font-family: 'Pretendard', sans-serif; background: #f8f9fa; display: flex; flex-direction: column; align-items: center; padding: 15px; user-select: none; margin: 0; box-sizing: border-box; overscroll-behavior: none; }
+        
+        .header { text-align: center; margin-bottom: 10px; color: #1c7ed6; width: 100%; }
+        .instructions { background: #e7f5ff; padding: 12px 15px; border-radius: 12px; border: 1px solid #74c0fc; color: #0b509c; font-weight: bold; margin-bottom: 10px; text-align: center; line-height: 1.5; width: 100%; max-width: 800px; box-sizing: border-box; font-size: 14px; word-break: keep-all; }
+        
+        .controls { display: flex; gap: 8px; margin-bottom: 10px; background: white; padding: 10px 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); align-items: center; justify-content: center; width: 100%; max-width: 800px; flex-wrap: wrap; box-sizing: border-box; }
+        
+        .btn-tab { font-family: inherit; font-size: 13px; font-weight: bold; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; background-color: #e9ecef; color: #495057; flex: 1 1 auto; text-align: center; white-space: nowrap; }
+        .btn-tab.active-2d { background-color: #4c6ef5; color: white; box-shadow: 0 4px 6px rgba(76, 110, 245, 0.3); }
+        .btn-tab.active-3d { background-color: #20c997; color: white; box-shadow: 0 4px 6px rgba(32, 201, 151, 0.3); }
+        .btn-tab.active-4d { background-color: #9c36b5; color: white; box-shadow: 0 4px 6px rgba(156, 54, 181, 0.3); }
+        
+        .input-panel { background: #fff3bf; border: 2px solid #fcc419; }
+        .poly-inp { width: 35px; text-align: center; font-weight: 900; font-size: 15px; border: 2px solid #ced4da; border-radius: 6px; padding: 4px; color: #343a40; }
+        .poly-label { font-size: 16px; font-weight: bold; color: #495057; margin: 0 2px; }
+        .btn-apply { background-color: #f59f00; color: white; font-weight: bold; border: none; border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 14px; transition: 0.1s; white-space: nowrap; margin: 2px; }
+        .btn-apply.btn-reset { background-color: #fa5252; }
+        .btn-apply:active { transform: scale(0.95); }
+
+        #wrapper-2d, #wrapper-3d { width: 100%; max-width: 800px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; touch-action: none; }
+        .hidden { display: none !important; }
+
+        .board-clip { width: 100%; max-width: 800px; position: relative; border: 2px solid #dee2e6; border-radius: 12px 12px 0 0; overflow: hidden; background: white; border-bottom: none; box-sizing: border-box; touch-action: none; }
+        
+        #board-2d { width: 800px; height: 500px; background-image: linear-gradient(#f1f3f5 1px, transparent 1px), linear-gradient(90deg, #f1f3f5 1px, transparent 1px); background-size: 20px 20px; touch-action: none; transform-origin: top left; position: relative; }
+        .tile-2d { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 900; font-size: 18px; color: white; border: 2px solid rgba(0,0,0,0.3); border-radius: 4px; cursor: grab; box-shadow: 2px 2px 5px rgba(0,0,0,0.2); box-sizing: border-box; touch-action: none; }
+        .tile-2d:active { cursor: grabbing; box-shadow: 4px 4px 10px rgba(0,0,0,0.3); z-index: 1000 !important; }
+        .inner-text { pointer-events: none; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); text-align: center; }
+        .sub-text { font-size: 11px; font-weight: normal; opacity: 0.9; margin-top: 2px; }
+
+        .controls-bottom { display: flex; justify-content: space-between; align-items: center; background: #f1f3f5; padding: 10px 15px; border-radius: 0 0 12px 12px; border: 2px solid #dee2e6; border-top: none; width: 100%; max-width: 800px; flex-wrap: wrap; gap: 10px; box-sizing: border-box; }
+        .rot-group { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+        .btn-action { font-family: inherit; font-size: 12px; font-weight: bold; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.1s; flex: 1 1 auto; white-space: nowrap; }
+        .btn-action:active { transform: scale(0.95); }
+        .btn-x { background: #e03131; } .btn-y { background: #2f9e44; } .btn-z { background: #1971c2; }
+        .status-box { font-size: 13px; color: #495057; font-weight: bold; background: #e9ecef; padding: 6px 10px; border-radius: 4px; border: 1px solid #ced4da; transition: 0.2s; flex: 1 1 100%; text-align: center; }
+        
+        #board-3d { width: 100%; background: #f8f9fa; cursor: default; touch-action: none; outline: none; }
+        .legend { display: flex; gap: 10px; justify-content: center; margin-bottom: 5px; font-size: 13px; font-weight: bold; flex-wrap: wrap; }
+        .badge { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+    </style>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/DragControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+</head>
+<body>
+
+<div class="header">
+    <h2 style="margin: 0 0 5px 0;">🧩 차원을 넘나드는 대수막대 실험실</h2>
+</div>
+
+<div class="controls">
+    <button id="btn-2d" class="btn-tab active-2d" onclick="window.switchMode('2D')">🟩 1단계: 2차식(평면)</button>
+    <button id="btn-3d" class="btn-tab" onclick="window.switchMode('3D')">🧊 2단계: 3차식(입체)</button>
+    <button id="btn-4d" class="btn-tab" onclick="window.switchMode('4D')">🌌 3단계: 4차식(치환)</button>
+</div>
+
+<div class="controls input-panel">
+    <span style="font-weight: 900; color: #d9480f; font-size: 14px; white-space: nowrap;">⚙️ 다항식 설정:</span>
+    <div style="display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 5px;">
+        <span id="wrap-x3" class="hidden">
+            <input type="number" id="inp-x3" min="0" max="10" value="1" class="poly-inp">
+            <span class="poly-label">x³ +</span>
+        </span>
+        <span id="wrap-x2">
+            <input type="number" id="inp-x2" min="0" max="20" value="1" class="poly-inp">
+            <span id="label-x2" class="poly-label">x² +</span>
+        </span>
+        <span id="wrap-x1">
+            <input type="number" id="inp-x1" min="0" max="30" value="5" class="poly-inp">
+            <span id="label-x1" class="poly-label">x +</span>
+        </span>
+        <span id="wrap-c">
+            <input type="number" id="inp-c" min="0" max="40" value="6" class="poly-inp">
+        </span>
+    </div>
+    <div style="display: flex; gap: 5px;">
+        <button class="btn-apply" onclick="window.applyPolynomial()">✨ 생성</button>
+        <button class="btn-apply btn-reset" onclick="window.resetBoard()">🔄 초기화</button>
+    </div>
+</div>
+
+<div id="instructions" class="instructions"></div>
+
+<div id="wrapper-2d">
+    <div id="board-clip-2d" class="board-clip">
+        <div id="board-2d"></div>
+    </div>
+    <div class="controls-bottom">
+        <span id="status-2d" class="status-box">선택된 블록: 없음</span>
+        <div class="rot-group">
+            <button class="btn-action btn-y" onclick="window.rotateSelected2D()">선택 막대 회전 (R 또는 더블클릭/터치)</button>
+        </div>
+    </div>
+</div>
+
+<div id="wrapper-3d" class="hidden">
+    <div class="legend" id="legend-3d">
+        <span><span class="badge" style="background:#339af0;"></span>x³</span>
+        <span><span class="badge" style="background:#51cf66;"></span>x²</span>
+        <span><span class="badge" style="background:#fcc419;"></span>x</span>
+        <span><span class="badge" style="background:#ff6b6b;"></span>1</span>
+    </div>
+    <div class="board-clip" style="border-radius: 12px 12px 0 0; border-bottom: none;">
+        <div id="board-3d"></div>
+    </div>
+    <div class="controls-bottom">
+        <span id="status-3d" class="status-box">선택된 블록: 없음</span>
+        <div class="rot-group">
+            <button class="btn-action btn-x" onclick="window.rotate3DBlock('x')">앞뒤 눕히기(X)</button>
+            <button class="btn-action btn-y" onclick="window.rotate3DBlock('y')">제자리 돌리기(Y)</button>
+            <button class="btn-action btn-z" onclick="window.rotate3DBlock('z')">옆으로 세우기(Z)</button>
+        </div>
+    </div>
+</div>
+
+<script>
+window.onload = function() {
+    try {
+        let currentMode = '2D';
+        let boardScale = 1;
+
+        const instructionsEl = document.getElementById('instructions');
+        const wrapper2d = document.getElementById('wrapper-2d');
+        const clip2d = document.getElementById('board-clip-2d');
+        const board2d = document.getElementById('board-2d');
+        const wrapper3d = document.getElementById('wrapper-3d');
+        const board3d = document.getElementById('board-3d');
+
+        const inpX3 = document.getElementById('inp-x3');
+        const inpX2 = document.getElementById('inp-x2');
+        const inpX1 = document.getElementById('inp-x1');
+        const inpC = document.getElementById('inp-c');
+        const wrapX3 = document.getElementById('wrap-x3');
+        const labelX2 = document.getElementById('label-x2');
+        const labelX1 = document.getElementById('label-x1');
+
+        window.resizeApp = function() {
+            const containerWidth = wrapper2d.clientWidth;
+            if(containerWidth > 0 && containerWidth < 800) {
+                boardScale = containerWidth / 800;
+            } else {
+                boardScale = 1;
+            }
+            board2d.style.transform = `scale(${boardScale})`;
+            clip2d.style.height = `${500 * boardScale}px`; 
+
+            if (currentMode === '3D' && renderer) {
+                const w3d = wrapper3d.clientWidth;
+                const h3d = w3d * (5/8);
+                board3d.style.height = h3d + 'px';
+                renderer.setSize(w3d, h3d);
+                camera.aspect = w3d / h3d;
+                camera.updateProjectionMatrix();
+            }
+        };
+
+        window.addEventListener('resize', window.resizeApp);
+
+        window.switchMode = function(mode) {
+            currentMode = mode;
+            document.getElementById('btn-2d').className = 'btn-tab';
+            document.getElementById('btn-3d').className = 'btn-tab';
+            document.getElementById('btn-4d').className = 'btn-tab';
+
+            if (mode === '2D') {
+                document.getElementById('btn-2d').classList.add('active-2d');
+                instructionsEl.innerHTML = "다항식을 설정하고 '생성'을 누른 뒤, <b>하나의 완벽한 직사각형</b>을 만들어보세요.";
+                wrapper3d.classList.add('hidden'); wrapper2d.classList.remove('hidden');
+                
+                wrapX3.classList.add('hidden');
+                labelX2.innerHTML = 'x&sup2; +'; labelX1.innerHTML = 'x +';
+                inpX2.value = 1; inpX1.value = 5; inpC.value = 6;
+                init2DBoard(false);
+            } 
+            else if (mode === '4D') {
+                document.getElementById('btn-4d').classList.add('active-4d');
+                instructionsEl.innerHTML = "치환(X=x&sup2;)을 활용해 4차식을 평면으로 변환했습니다. 직사각형을 만들어보세요!";
+                wrapper3d.classList.add('hidden'); wrapper2d.classList.remove('hidden');
+                
+                wrapX3.classList.add('hidden');
+                labelX2.innerHTML = 'x&#8308; +'; labelX1.innerHTML = 'x&sup2; +';
+                inpX2.value = 1; inpX1.value = 5; inpC.value = 6;
+                init2DBoard(true);
+            } 
+            else if (mode === '3D') {
+                document.getElementById('btn-3d').classList.add('active-3d');
+                instructionsEl.innerHTML = "<b>[조작]</b> 블록 드래그: 이동 | 하단 버튼: 입체 회전 | 빈 공간 드래그: 시점 회전";
+                wrapper2d.classList.add('hidden'); wrapper3d.classList.remove('hidden');
+                
+                wrapX3.classList.remove('hidden');
+                labelX2.innerHTML = 'x&sup2; +'; labelX1.innerHTML = 'x +';
+                inpX3.value = 1; inpX2.value = 4; inpX1.value = 5; inpC.value = 2;
+                
+                if (!is3DInitialized) { init3DBoard(); is3DInitialized = true; } 
+                else { reset3DBoard(); }
+            }
+            setTimeout(window.resizeApp, 10);
+        };
+
+        window.applyPolynomial = function() {
+            if (currentMode === '2D') init2DBoard(false);
+            else if (currentMode === '4D') init2DBoard(true);
+            else if (currentMode === '3D') reset3DBoard();
+        };
+
+        window.resetBoard = function() {
+            window.applyPolynomial();
+        };
+
+        let dragItem2D = null;
+        let selected2D = null;
+        let offset2DX = 0, offset2DY = 0;
+
+        function init2DBoard(is4D) {
+            board2d.innerHTML = '';
+            select2D(null);
+            let cx = 20, cy = 20;
+            
+            const countX2 = parseInt(inpX2.value) || 0;
+            const countX1 = parseInt(inpX1.value) || 0;
+            const countC = parseInt(inpC.value) || 0;
+
+            for(let i=0; i<countX2; i++) { 
+                create2DTile(is4D ? 'x4' : 'x2', cx, cy, 100, 100, '#339af0'); 
+                cx += 120; if(cx > 650) { cx = 20; cy += 120; }
+            }
+            cx = 20; cy += 120;
+            for(let i=0; i<countX1; i++) { 
+                create2DTile(is4D ? 'x2_sub' : 'x', cx, cy, 40, 100, '#51cf66'); 
+                cx += 60; if(cx > 700) { cx = 20; cy += 120; }
+            }
+            cx = 20; cy += 120;
+            for(let i=0; i<countC; i++) { 
+                create2DTile('one', cx, cy, 40, 40, '#fcc419', '#333'); 
+                cx += 60; if(cx > 700) { cx = 20; cy += 60; }
+            }
+        }
+
+        function create2DTile(type, x, y, w, h, bg, color='white') {
+            const el = document.createElement('div');
+            el.className = 'tile-2d';
+            el.style.width = w + 'px'; el.style.height = h + 'px';
+            el.style.left = x + 'px'; el.style.top = y + 'px';
+            el.style.backgroundColor = bg; el.style.color = color;
+            el.dataset.angle = '0'; 
+            
+            let html = ''; let name = '';
+            if (type === 'x2') { html = 'x&sup2;'; name = 'x²'; }
+            else if (type === 'x') { html = 'x'; name = 'x'; el.dataset.rotatable = 'true'; }
+            else if (type === 'one') { html = '1'; name = '1'; }
+            else if (type === 'x4') { html = 'x&#8308;<div class="sub-text">(X&sup2;)</div>'; name = 'x⁴'; }
+            else if (type === 'x2_sub') { html = 'x&sup2;<div class="sub-text">(X)</div>'; name = 'x²(X)'; el.dataset.rotatable = 'true'; }
+
+            el.dataset.name = name;
+
+            const inner = document.createElement('div');
+            inner.className = 'inner-text';
+            inner.innerHTML = html;
+            el.appendChild(inner);
+
+            let lastTap = 0;
+            el.addEventListener('pointerup', (e) => {
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastTap;
+                if (tapLength < 300 && tapLength > 0) {
+                    select2D(el);
+                    window.rotateSelected2D();
+                    e.preventDefault();
+                }
+                lastTap = currentTime;
+            });
+
+            board2d.appendChild(el);
+        }
+
+        function select2D(el) {
+            if (selected2D) {
+                selected2D.style.borderColor = 'rgba(0,0,0,0.3)';
+                selected2D.style.borderWidth = '2px';
+            }
+            selected2D = el;
+            const statusEl = document.getElementById('status-2d');
+            if (selected2D) {
+                selected2D.style.borderColor = '#e03131';
+                selected2D.style.borderWidth = '3px';
+                statusEl.innerText = `선택된 블록: ${selected2D.dataset.name}`;
+                statusEl.style.backgroundColor = '#e7f5ff'; 
+                statusEl.style.color = '#1864ab'; 
+                statusEl.style.borderColor = '#339af0';
+            } else {
+                statusEl.innerText = '선택된 블록: 없음 (클릭하세요)';
+                statusEl.style.backgroundColor = '#e9ecef'; 
+                statusEl.style.color = '#495057'; 
+                statusEl.style.borderColor = '#ced4da';
+            }
+        }
+
+        window.rotateSelected2D = function() {
+            if (!selected2D) { alert('회전할 막대를 먼저 클릭(선택)해주세요!'); return; }
+            let angle = parseInt(selected2D.dataset.angle) || 0;
+            angle += 90;
+            selected2D.dataset.angle = angle;
+            
+            const w = selected2D.style.width;
+            const h = selected2D.style.height;
+            selected2D.style.width = h;
+            selected2D.style.height = w;
+            
+            const inner = selected2D.querySelector('.inner-text');
+            if(inner) inner.style.transform = `rotate(${angle}deg)`;
+        };
+
+        function dragStart2D(e) {
+            let target = e.target;
+            while(target && !target.classList.contains('tile-2d')) {
+                if(target === board2d || target.tagName === 'BODY') break;
+                target = target.parentElement;
+            }
+            if (!target || !target.classList.contains('tile-2d')) return;
+            
+            dragItem2D = target;
+            select2D(dragItem2D);
+            
+            const rect = dragItem2D.getBoundingClientRect();
+            const clientX = e.type.includes('touch') ? e.touches.clientX : e.clientX;
+            const clientY = e.type.includes('touch') ? e.touches.clientY : e.clientY;
+            
+            offset2DX = (clientX - rect.left) / boardScale; 
+            offset2DY = (clientY - rect.top) / boardScale;
+            
+            document.querySelectorAll('.tile-2d').forEach(t => t.style.zIndex = 10);
+            dragItem2D.style.zIndex = 1000;
+        }
+
+        function drag2D(e) {
+            if (!dragItem2D) return;
+            if (e.cancelable) e.preventDefault(); 
+            const clientX = e.type.includes('touch') ? e.touches.clientX : e.clientX;
+            const clientY = e.type.includes('touch') ? e.touches.clientY : e.clientY;
+            const boardRect = board2d.getBoundingClientRect();
+            
+            let visualX = clientX - boardRect.left;
+            let visualY = clientY - boardRect.top;
+            
+            let rawX = (visualX / boardScale) - offset2DX; 
+            let rawY = (visualY / boardScale) - offset2DY;
+            
+            dragItem2D.style.left = (Math.round(rawX / 20) * 20) + 'px'; 
+            dragItem2D.style.top = (Math.round(rawY / 20) * 20) + 'px';
+        }
+
+        board2d.addEventListener('mousedown', dragStart2D); 
+        window.addEventListener('mousemove', drag2D, {passive:false}); 
+        window.addEventListener('mouseup', () => dragItem2D = null);
+        
+        board2d.addEventListener('touchstart', dragStart2D, {passive:false}); 
+        window.addEventListener('touchmove', drag2D, {passive:false}); 
+        window.addEventListener('touchend', () => dragItem2D = null);
+
+        board2d.addEventListener('pointerdown', (e) => {
+            if (e.target === board2d) select2D(null);
+        });
+
+        let is3DInitialized = false;
+        let scene, camera, renderer, orbitControls, dragControls;
+        const blocks3D = [];
+        let selectedBlock3D = null;
+        const UNIT = 1.5; 
+        const X_LEN = 3 * UNIT; 
+
+        function createLabelTexture(text, bgColor) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = bgColor; ctx.fillRect(0, 0, 256, 256);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+            ctx.font = 'bold 110px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(text, 128, 128);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function init3DBoard() {
+            if (typeof THREE === 'undefined') {
+                alert('3D 엔진을 불러오지 못했습니다. 네트워크 상태를 확인해주세요.');
+                return;
+            }
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('#f8f9fa');
+
+            const w3d = wrapper3d.clientWidth || 800;
+            const h3d = w3d * (5/8);
+            board3d.style.height = h3d + 'px';
+
+            camera = new THREE.PerspectiveCamera(45, w3d/h3d, 0.1, 1000);
+            camera.position.set(20, 20, 25);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(w3d, h3d);
+            board3d.appendChild(renderer.domElement);
+
+            orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
+            orbitControls.enableDamping = true;
+            orbitControls.target.set(0, 3, 0);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            dirLight.position.set(10, 20, 15);
+            scene.add(dirLight);
+            scene.add(new THREE.GridHelper(30, 30, 0xadb5bd, 0xe9ecef));
+
+            reset3DBoard();
+
+            renderer.setAnimationLoop(() => {
+                orbitControls.update();
+                renderer.render(scene, camera);
+            });
+        }
+
+        function create3DBlock(w, h, d, colorHex, typeStr) {
+            const texture = createLabelTexture(typeStr, colorHex);
+            const material = new THREE.MeshLambertMaterial({ map: texture });
+            const geometry = new THREE.BoxGeometry(w, h, d);
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.y = h / 2;
+            
+            const edges = new THREE.EdgesGeometry(geometry);
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x343a40, linewidth: 2 }));
+            line.raycast = function() {}; 
+            mesh.add(line);
+            
+            mesh.userData = { type: typeStr, isAnimating: false };
+            scene.add(mesh);
+            blocks3D.push(mesh);
+            return mesh;
+        }
+
+        function reset3DBoard() {
+            if(!scene) return;
+            blocks3D.forEach(b => scene.remove(b));
+            blocks3D.length = 0;
+            selectedBlock3D = null;
+            updateStatus3D();
+
+            const countX3 = parseInt(inpX3.value) || 0;
+            const countX2 = parseInt(inpX2.value) || 0;
+            const countX1 = parseInt(inpX1.value) || 0;
+            const countC = parseInt(inpC.value) || 0;
+
+            let zOffset = -8;
+            
+            for(let i=0; i<countX3; i++) { 
+                const b = create3DBlock(X_LEN, X_LEN, X_LEN, '#339af0', 'x³');
+                b.position.set(-6 + (i%3)*5, X_LEN/2, zOffset + Math.floor(i/3)*5);
+            }
+            zOffset += Math.ceil(countX3/3)*5 + 2;
+            for(let i=0; i<countX2; i++) { 
+                const b = create3DBlock(X_LEN, X_LEN, UNIT, '#51cf66', 'x²'); 
+                b.position.set(-6 + (i%4)*5, X_LEN/2, zOffset + Math.floor(i/4)*3); 
+            }
+            zOffset += Math.ceil(countX2/4)*3 + 2;
+            for(let i=0; i<countX1; i++) { 
+                const b = create3DBlock(X_LEN, UNIT, UNIT, '#fcc419', 'x'); 
+                b.position.set(-6 + (i%4)*5, UNIT/2, zOffset + Math.floor(i/4)*3); 
+            }
+            zOffset += Math.ceil(countX1/4)*3 + 2;
+            for(let i=0; i<countC; i++) { 
+                const b = create3DBlock(UNIT, UNIT, UNIT, '#ff6b6b', '1'); 
+                b.position.set(-6 + (i%5)*3, UNIT/2, zOffset + Math.floor(i/5)*3); 
+            }
+
+            if(dragControls) dragControls.dispose();
+            dragControls = new THREE.DragControls(blocks3D, camera, renderer.domElement);
+            
+            dragControls.addEventListener('dragstart', function (event) {
+                orbitControls.enabled = false;
+                select3DBlock(event.object);
+                if (typeof gsap !== 'undefined') gsap.to(event.object.position, { y: event.object.position.y + 0.5, duration: 0.2 });
+            });
+
+            dragControls.addEventListener('drag', function (event) {
+                const bbox = new THREE.Box3().setFromObject(event.object);
+                if (bbox.min.y < 0) event.object.position.y += (0 - bbox.min.y);
+            });
+
+            dragControls.addEventListener('dragend', function (event) {
+                orbitControls.enabled = true;
+                snapToGrid3D(event.object);
+            });
+        }
+
+        function select3DBlock(mesh) {
+            if (selectedBlock3D) selectedBlock3D.material.emissive.setHex(0x000000);
+            selectedBlock3D = mesh;
+            selectedBlock3D.material.emissive.setHex(0x444444); 
+            updateStatus3D();
+        }
+
+        function updateStatus3D() {
+            const statusEl = document.getElementById('status-3d');
+            if (selectedBlock3D) {
+                statusEl.innerText = `선택된 블록: ${selectedBlock3D.userData.type}`;
+                statusEl.style.backgroundColor = '#e7f5ff'; statusEl.style.color = '#1864ab'; statusEl.style.borderColor = '#339af0';
+            } else {
+                statusEl.innerText = '선택된 블록: 없음 (클릭하세요)';
+                statusEl.style.backgroundColor = '#e9ecef'; statusEl.style.color = '#495057'; statusEl.style.borderColor = '#ced4da';
+            }
+        }
+
+        function snapToGrid3D(mesh) {
+            const bbox = new THREE.Box3().setFromObject(mesh);
+            const minX = Math.round(bbox.min.x / UNIT) * UNIT;
+            const minZ = Math.round(bbox.min.z / UNIT) * UNIT;
+            
+            const targetX = mesh.position.x + (minX - bbox.min.x);
+            const targetZ = mesh.position.z + (minZ - bbox.min.z);
+            const targetY = mesh.position.y - bbox.min.y; 
+            
+            if (typeof gsap !== 'undefined') {
+                gsap.to(mesh.position, { x: targetX, y: targetY, z: targetZ, duration: 0.2, ease: "power2.out" });
+            } else {
+                mesh.position.set(targetX, targetY, targetZ);
+            }
+        }
+
+        window.rotate3DBlock = function(axisStr) {
+            if (!selectedBlock3D) { alert('먼저 회전시킬 막대를 클릭(선택)해주세요!'); return; }
+            if (selectedBlock3D.userData.isAnimating) return;
+            selectedBlock3D.userData.isAnimating = true;
+
+            const axis = new THREE.Vector3();
+            if (axisStr === 'x') axis.set(1, 0, 0);
+            if (axisStr === 'y') axis.set(0, 1, 0);
+            if (axisStr === 'z') axis.set(0, 0, 1);
+
+            const startQuat = selectedBlock3D.quaternion.clone();
+            const q = new THREE.Quaternion().setFromAxisAngle(axis, Math.PI / 2);
+            const targetQuat = q.multiply(startQuat);
+
+            if (typeof gsap !== 'undefined') {
+                const dummy = { t: 0 };
+                gsap.to(dummy, {
+                    t: 1, duration: 0.35, ease: "back.out(1.5)",
+                    onUpdate: () => { selectedBlock3D.quaternion.slerpQuaternions(startQuat, targetQuat, dummy.t); },
+                    onComplete: () => { selectedBlock3D.userData.isAnimating = false; snapToGrid3D(selectedBlock3D); }
+                });
+            } else {
+                selectedBlock3D.quaternion.copy(targetQuat);
+                selectedBlock3D.userData.isAnimating = false;
+                snapToGrid3D(selectedBlock3D);
+            }
+        };
+
+        window.addEventListener('keydown', (e) => {
+            if (currentMode === '3D') {
+                if (e.key === 'x' || e.key === 'X') window.rotate3DBlock('x');
+                if (e.key === 'y' || e.key === 'Y') window.rotate3DBlock('y');
+                if (e.key === 'z' || e.key === 'Z') window.rotate3DBlock('z');
+            } else if (currentMode === '2D' || currentMode === '4D') {
+                if (e.key === 'r' || e.key === 'R') {
+                    if(selected2D) window.rotateSelected2D();
+                }
+            }
+        });
+
+        document.addEventListener('pointerdown', (e) => {
+            if (currentMode !== '3D' || e.target.tagName !== 'CANVAS') return;
+            setTimeout(() => {
+                if (!dragControls) return;
+                const raycaster = new THREE.Raycaster();
+                const mouse = new THREE.Vector2();
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1; mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(blocks3D, false);
+                
+                if (intersects.length === 0 && selectedBlock3D) {
+                    selectedBlock3D.material.emissive.setHex(0x000000);
+                    selectedBlock3D = null;
+                    updateStatus3D();
+                }
+            }, 50);
+        });
+
+        window.switchMode('2D'); 
+
+    } catch (error) {
+        console.error("시스템 오류 발생:", error);
+        alert("코드 실행 중 예기치 않은 오류가 발생했습니다. 개발자 도구(F12) 콘솔창의 빨간색 오류 메시지를 확인해주세요.\n\n오류 내용: " + error.message);
+    }
+};
+</script>
+</body>
+</html>
